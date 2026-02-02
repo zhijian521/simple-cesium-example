@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>上海陆家嘴 3D 地图</title>
+    
+    <!-- Cesium CSS -->
+    <link href="https://cesium.com/downloads/cesiumjs/releases/1.112/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+    
+    <!-- 自定义样式 -->
+    <link rel="stylesheet" href="./css/style.css">
+</head>
+<body>
+    <!-- 加载提示 -->
+    <div id="loading" class="loading">LOADING...</div>
+    
+    <!-- 飞机信息面板 -->
+    <div id="flightInfo" class="flight-info">
+        <h3>✈️ CES2024</h3>
+        <div class="info-row">
+            <span class="label">速度</span>
+            <span class="value">360 km/h</span>
+        </div>
+        <div class="info-row">
+            <span class="label">高度</span>
+            <span class="value" id="altitude">600 m</span>
+        </div>
+        <div class="info-row">
+            <span class="label">航向</span>
+            <span class="value" id="heading">0°</span>
+        </div>
+    </div>
+
+    <!-- 视角锁定提示 -->
+    <div id="cameraHint" class="camera-hint">🔒 视角跟随中 | 单击任意位置解锁</div>
+
+    <!-- Cesium 容器 -->
+    <div id="cesiumContainer"></div>
+
+    <!-- Cesium JS -->
+    <script src="https://cesium.com/downloads/cesiumjs/releases/1.112/Build/Cesium/Cesium.js"></script>
+    
+    <!-- 主逻辑 -->
+    <script src="./js/main.js"></script>
+</body>
+</html>
