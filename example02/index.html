@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Example02 · 机场空域展示</title>
+    
+    <!-- Cesium CSS -->
+    <link href="https://cesium.com/downloads/cesiumjs/releases/1.112/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+    
+    <style>
+        /* ========== 基础样式 ========== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body, #cesiumContainer {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: #000;
+        }
+
+        #cesiumContainer canvas {
+            image-rendering: -webkit-optimize-contrast;
+            image-rendering: crisp-edges;
+        }
+
+        /* ========== 加载提示 ========== */
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #00d4ff;
+            font-size: 18px;
+            z-index: 2000;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 20px 40px;
+            border-radius: 4px;
+            font-family: 'Microsoft YaHei', sans-serif;
+            letter-spacing: 2px;
+        }
+
+        /* ========== 控制面板 ========== */
+        .control-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 20, 40, 0.95);
+            border: 1px solid #00d4ff;
+            border-radius: 8px;
+            padding: 15px;
+            color: #fff;
+            font-family: 'Microsoft YaHei', sans-serif;
+            z-index: 1000;
+            min-width: 220px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .control-panel h3 {
+            color: #00d4ff;
+            font-size: 14px;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #00d4ff;
+        }
+
+        .airport-section {
+            margin-bottom: 12px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #333;
+        }
+
+        .airport-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .airport-name {
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .control-item {
+            display: flex;
+            align-items: center;
+            margin: 6px 0;
+            font-size: 11px;
+            cursor: pointer;
+        }
+
+        .control-item input[type="checkbox"] {
+            margin-right: 8px;
+            cursor: pointer;
+        }
+
+        .control-item label {
+            cursor: pointer;
+            color: #ccc;
+            transition: color 0.2s;
+        }
+
+        .control-item:hover label {
+            opacity: 0.8;
+        }
+
+        /* ========== 按钮样式 ========== */
+        .btn-primary {
+            background: #00d4ff;
+            border: none;
+            color: #000;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            width: 100%;
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+
+        .btn-primary:hover {
+            background: #33ddff;
+        }
+
+        /* ========== 信息卡片 ========== */
+        .info-card {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 20, 40, 0.95);
+            border: 1px solid #00d4ff;
+            border-radius: 8px;
+            padding: 15px;
+            color: #fff;
+            font-family: 'Microsoft YaHei', sans-serif;
+            z-index: 1000;
+            max-width: 320px;
+        }
+
+        .info-card h4 {
+            color: #00d4ff;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+
+        .info-card p {
+            font-size: 12px;
+            color: #aaa;
+            line-height: 1.6;
+            margin-bottom: 8px;
+        }
+
+        .legend-title {
+            font-size: 11px;
+            color: #888;
+            margin: 12px 0 6px 0;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin: 4px 0;
+            font-size: 11px;
+        }
+
+        .legend-color {
+            width: 14px;
+            height: 14px;
+            border-radius: 3px;
+            margin-right: 8px;
+        }
+
+        .legend-desc {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #333;
+            font-size: 10px;
+            color: #666;
+            line-height: 1.5;
+        }
+    </style>
+</head>
+<body>
+    <!-- 加载提示 -->
+    <div id="loading" class="loading">加载中...</div>
+
+    <!-- 控制面板 -->
+    <div class="control-panel">
+        <h3>B类空域控制</h3>
+        
+        <!-- 虹桥机场 (双跑道) -->
+        <div class="airport-section">
+            <div class="airport-header">
+                <span class="airport-name" style="color: #00d4ff;">虹桥机场 ZSSS (双跑道)</span>
+                <input type="checkbox" id="toggleHongqiao" checked>
+            </div>
+            <div class="control-item">
+                <input type="checkbox" id="toggleHqLayer0" checked>
+                <label for="toggleHqLayer0" style="color: #64B5F6;">B类下层 0-600m (15km)</label>
+            </div>
+            <div class="control-item">
+                <input type="checkbox" id="toggleHqLayer1" checked>
+                <label for="toggleHqLayer1" style="color: #1976D2;">B类上层 600-3600m (30km)</label>
+            </div>
+        </div>
+        
+        <!-- 浦东机场 (五跑道) -->
+        <div class="airport-section">
+            <div class="airport-header">
+                <span class="airport-name" style="color: #ff6464;">浦东机场 ZSPD (五跑道)</span>
+                <input type="checkbox" id="togglePudong" checked>
+            </div>
+            <div class="control-item">
+                <input type="checkbox" id="togglePdLayer0" checked>
+                <label for="togglePdLayer0" style="color: #64B5F6;">B类下层 0-900m (20km)</label>
+            </div>
+            <div class="control-item">
+                <input type="checkbox" id="togglePdLayer1" checked>
+                <label for="togglePdLayer1" style="color: #1976D2;">B类中层 900-1800m (40km)</label>
+            </div>
+            <div class="control-item">
+                <input type="checkbox" id="togglePdLayer2" checked>
+                <label for="togglePdLayer2" style="color: #0D47A1;">B类上层 1800-6000m (60km)</label>
+            </div>
+        </div>
+        
+        <!-- 其他控制 -->
+        <div class="control-item">
+            <input type="checkbox" id="toggleBuildings" checked>
+            <label for="toggleBuildings">3D 建筑</label>
+        </div>
+        
+        <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #333;">
+            <button id="btnOverview" class="btn-primary">总览视角</button>
+        </div>
+    </div>
+
+    <!-- 信息卡片 -->
+    <div class="info-card">
+        <h4>B类空域划分标准</h4>
+        <p>依据《国家空域基础分类方法》：B类空域划设在民用运输机场上空。</p>
+        
+        <div class="legend-title">虹桥机场 (双跑道)</div>
+        <p style="font-size: 11px; color: #999; margin-bottom: 8px;">
+            二环阶梯结构：半径15km/30km<br>
+            高度：0-600m / 600-3600m
+        </p>
+        
+        <div class="legend-title">浦东机场 (三跑道以上)</div>
+        <p style="font-size: 11px; color: #999; margin-bottom: 8px;">
+            三环阶梯结构：半径20km/40km/60km<br>
+            高度：0-900m / 900-1800m / 1800-6000m
+        </p>
+        
+        <div class="legend-title">图例（蓝色系表示B类空域）</div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #64B5F6;"></div>
+            <span style="color: #ccc;">B类下层（浅蓝）</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #1976D2;"></div>
+            <span style="color: #ccc;">B类中层（中蓝）</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #0D47A1;"></div>
+            <span style="color: #ccc;">B类上层（深蓝）</span>
+        </div>
+    </div>
+
+    <!-- Cesium 容器 -->
+    <div id="cesiumContainer"></div>
+
+    <!-- Cesium JS -->
+    <script src="https://cesium.com/downloads/cesiumjs/releases/1.112/Build/Cesium/Cesium.js"></script>
+    <script src="./js/main.js"></script>
+</body>
+</html>
