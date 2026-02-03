@@ -128,8 +128,8 @@ async function initMap() {
             navigationInstructionsInitiallyVisible: false,
             shouldAnimate: true,
             terrain: Cesium.Terrain.fromWorldTerrain(),
-            // 提高渲染质量
-            msaaSamples: 4, // 启用 4x MSAA 抗锯齿
+            // 渲染质量 - 平衡性能
+            msaaSamples: 2, // 2x MSAA 抗锯齿
             contextOptions: {
                 webgl: {
                     alpha: false,
@@ -208,18 +208,18 @@ function initSceneEffects() {
     scene.hdr = true;
     scene.globe.maximumScreenSpaceError = 2;
 
-    // === 提高清晰度设置 ===
-    // 启用抗锯齿 (MSAA)
+    // === 清晰度与性能平衡 ===
+    // 启用抗锯齿
     scene.postProcessStages.fxaa.enabled = true;
 
-    // 提高分辨率比例（以性能为代价换取清晰度）
-    viewer.resolutionScale = window.devicePixelRatio || 1.0;
+    // 分辨率比例 - 超高清设置
+    viewer.resolutionScale = 1.5;
 
-    // 各向异性过滤 - 提高纹理清晰度
-    scene.globe.maximumScreenSpaceError = 2;
+    // 地形细节 - 适中
+    scene.globe.maximumScreenSpaceError = 4;
 
-    // 提高几何体渲染精度
-    scene.globe.tileCacheSize = 512;
+    // 瓦片缓存
+    scene.globe.tileCacheSize = 384;
 }
 
 // 加载3D建筑
@@ -232,7 +232,7 @@ async function loadBuildings() {
             fragmentShaderText: BUILDING_SHADER
         });
 
-        osmBuildings.maximumScreenSpaceError = 4; // 提高建筑细节精度
+        osmBuildings.maximumScreenSpaceError = 8; // 建筑细节精度（平衡）
         viewer.scene.primitives.add(osmBuildings);
 
     } catch (error) {
