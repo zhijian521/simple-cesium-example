@@ -9,6 +9,7 @@ let isCameraLocked = false;
 let infoPanelVisible = false;
 let airplaneEntities = [];
 let pathEntities = [];
+let buildingCustomShader;
 let isNightMode = true;
 let selectedAirplaneIndex = 0; // 当前选中的飞机索引
 let cameraDistance = 500; // 相机跟随距离（米）
@@ -108,6 +109,52 @@ const BUILDING_SHADER = `
 
         material.diffuse = litColor;
         material.alpha = 0.6;
+    }
+`;
+
+const BUILDING_SHADER_OPTIMIZED = `
+    void fragmentMain(FragmentInput fsInput, inout czm_modelMaterial material) {
+        vec3 positionMC = fsInput.attributes.positionMC;
+        vec3 positionEC = fsInput.attributes.positionEC;
+        vec3 normalEC = fsInput.attributes.normalEC;
+        vec3 posToCamera = normalize(-positionEC);
+        vec3 coord = normalize(vec3(czm_inverseViewRotation * reflect(posToCamera, normalEC)));
+        float ambientCoefficient = 0.3;
+        float diffuseCoefficient = max(0.0, dot(normalEC, czm_sunDirectionEC));
+
+        if (u_isDark) {
+            vec4 darkRefColor = texture(u_envTexture2, vec2(coord.x, (coord.z - coord.y) / 2.0));
+            material.diffuse = mix(
+                mix(vec3(0.3), vec3(0.1, 0.2, 0.4), clamp(positionMC.z / 200.0, 0.0, 1.0)),
+                darkRefColor.rgb,
+                0.3
+            );
+            material.diffuse *= 0.2;
+
+            float baseHeight = -40.0;
+            float heightRange = 20.0;
+            float glowRange = 300.0;
+            float buildingHeight = positionMC.z - baseHeight;
+            float pulse = fract(czm_frameNumber / 120.0) * 3.14159265 * 2.0;
+            float gradient = buildingHeight / heightRange + sin(pulse) * 0.1;
+            material.diffuse *= vec3(gradient);
+
+            float scanTime = fract(czm_frameNumber / 360.0);
+            scanTime = abs(scanTime - 0.5) * 2.0;
+            float h = clamp(buildingHeight / glowRange, 0.0, 1.0);
+            float diff = step(0.005, abs(h - scanTime));
+            material.diffuse += material.diffuse * (1.0 - diff);
+        } else {
+            vec4 dayRefColor = texture(u_envTexture, vec2(coord.x, (coord.z - coord.y) / 3.0));
+            material.diffuse = mix(
+                mix(vec3(0.0), vec3(0.5), clamp(positionMC.z / 300.0, 0.0, 1.0)),
+                dayRefColor.rgb,
+                0.3
+            );
+            material.diffuse *= min(diffuseCoefficient + ambientCoefficient, 1.0);
+        }
+
+        material.alpha = 1.0;
     }
 `;
 
@@ -239,6 +286,10 @@ function applySceneMode(useNightMode) {
         scene.globe.showGroundAtmosphere = false;
         scene.globe.dynamicAtmosphereLighting = false;
         scene.globe.dynamicAtmosphereLightingFromSun = false;
+
+        if (buildingCustomShader) {
+            buildingCustomShader.setUniform('u_isDark', true);
+        }
     } else {
         scene.light = new Cesium.DirectionalLight({
             direction: new Cesium.Cartesian3(0.6, -0.4, -0.7),
@@ -250,6 +301,10 @@ function applySceneMode(useNightMode) {
         scene.globe.showGroundAtmosphere = true;
         scene.globe.dynamicAtmosphereLighting = true;
         scene.globe.dynamicAtmosphereLightingFromSun = true;
+
+        if (buildingCustomShader) {
+            buildingCustomShader.setUniform('u_isDark', false);
+        }
     }
 
     updateSceneModeButton();
@@ -271,10 +326,31 @@ async function loadBuildings() {
     try {
         const osmBuildings = await Cesium.createOsmBuildingsAsync(viewer);
 
-        osmBuildings.customShader = new Cesium.CustomShader({
+        buildingCustomShader = new Cesium.CustomShader({
+            uniforms: {
+                u_envTexture: {
+                    value: new Cesium.TextureUniform({
+                        url: '../images/sky.jpg'
+                    }),
+                    type: Cesium.UniformType.SAMPLER_2D
+                },
+                u_envTexture2: {
+                    value: new Cesium.TextureUniform({
+                        url: '../images/pic.jpg'
+                    }),
+                    type: Cesium.UniformType.SAMPLER_2D
+                },
+                u_isDark: {
+                    value: isNightMode,
+                    type: Cesium.UniformType.BOOL
+                }
+            },
+            mode: Cesium.CustomShaderMode.REPLACE_MATERIAL,
             lightingModel: Cesium.LightingModel.UNLIT,
-            fragmentShaderText: BUILDING_SHADER
+            fragmentShaderText: BUILDING_SHADER_OPTIMIZED
         });
+
+        osmBuildings.customShader = buildingCustomShader;
 
         osmBuildings.maximumScreenSpaceError = 8; // 建筑细节精度（平衡）
         viewer.scene.primitives.add(osmBuildings);
